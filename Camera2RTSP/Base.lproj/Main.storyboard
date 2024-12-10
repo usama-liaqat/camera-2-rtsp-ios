@@ -20,27 +20,55 @@
                                 <rect key="frame" x="0.0" y="59" width="393" height="759"/>
                                 <subviews>
                                     <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="6d0-fv-bO6">
-                                        <rect key="frame" x="0.0" y="0.0" width="393" height="719"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="393" height="666.66666666666663"/>
                                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                                     </view>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Kah-wf-3g3">
-                                        <rect key="frame" x="0.0" y="719" width="393" height="40"/>
-                                        <constraints>
-                                            <constraint firstAttribute="height" constant="40" id="4qn-WD-G2z"/>
-                                        </constraints>
-                                        <state key="normal" title="Button"/>
-                                        <buttonConfiguration key="configuration" style="filled" title="Switch Camera"/>
-                                        <connections>
-                                            <action selector="switchCameraTapped:" destination="BYZ-38-t0r" eventType="touchDown" id="x3K-DL-o8V"/>
-                                        </connections>
-                                    </button>
+                                    <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="4Lw-FO-ymP">
+                                        <rect key="frame" x="0.0" y="666.66666666666663" width="393" height="92.333333333333371"/>
+                                        <subviews>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Kah-wf-3g3">
+                                                <rect key="frame" x="0.0" y="0.0" width="393" height="40"/>
+                                                <constraints>
+                                                    <constraint firstAttribute="height" constant="40" id="4qn-WD-G2z"/>
+                                                </constraints>
+                                                <state key="normal" title="Button"/>
+                                                <buttonConfiguration key="configuration" style="filled" title="Switch Camera"/>
+                                                <connections>
+                                                    <action selector="switchCameraTapped:" destination="BYZ-38-t0r" eventType="touchDown" id="x3K-DL-o8V"/>
+                                                </connections>
+                                            </button>
+                                            <stackView opaque="NO" contentMode="scaleToFill" spacing="5" translatesAutoresizingMaskIntoConstraints="NO" id="bka-Mu-lVQ">
+                                                <rect key="frame" x="0.0" y="50" width="393" height="42.333333333333343"/>
+                                                <subviews>
+                                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="LQ8-1y-Ebe">
+                                                        <rect key="frame" x="0.0" y="0.0" width="194" height="42.333333333333336"/>
+                                                        <state key="normal" title="Button"/>
+                                                        <buttonConfiguration key="configuration" style="filled" title="Start Publish">
+                                                            <color key="baseBackgroundColor" systemColor="systemGreenColor"/>
+                                                        </buttonConfiguration>
+                                                        <connections>
+                                                            <action selector="startPublishTapped:" destination="BYZ-38-t0r" eventType="touchDown" id="JIh-eT-cn3"/>
+                                                        </connections>
+                                                    </button>
+                                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="srm-Ch-xzc">
+                                                        <rect key="frame" x="199" y="0.0" width="194" height="42.333333333333336"/>
+                                                        <state key="normal" title="Button"/>
+                                                        <buttonConfiguration key="configuration" style="filled" title="Stop Publish">
+                                                            <color key="baseBackgroundColor" systemColor="systemPinkColor"/>
+                                                        </buttonConfiguration>
+                                                        <connections>
+                                                            <action selector="stopPublishTapped:" destination="BYZ-38-t0r" eventType="touchDown" id="G7o-vc-iu7"/>
+                                                        </connections>
+                                                    </button>
+                                                </subviews>
+                                            </stackView>
+                                        </subviews>
+                                    </stackView>
                                 </subviews>
                                 <constraints>
                                     <constraint firstAttribute="trailing" secondItem="6d0-fv-bO6" secondAttribute="trailing" id="A7s-8f-8vc"/>
                                     <constraint firstItem="6d0-fv-bO6" firstAttribute="top" secondItem="HzC-aq-DcM" secondAttribute="top" id="UKP-d6-JSr"/>
-                                    <constraint firstItem="Kah-wf-3g3" firstAttribute="leading" secondItem="HzC-aq-DcM" secondAttribute="leading" id="V7S-KD-5lS"/>
                                     <constraint firstItem="6d0-fv-bO6" firstAttribute="leading" secondItem="HzC-aq-DcM" secondAttribute="leading" id="VwW-2V-lr1"/>
-                                    <constraint firstAttribute="trailing" secondItem="Kah-wf-3g3" secondAttribute="trailing" id="XVM-4P-yPV"/>
                                 </constraints>
                             </stackView>
                         </subviews>
@@ -55,6 +83,8 @@
                     </view>
                     <connections>
                         <outlet property="cameraView" destination="6d0-fv-bO6" id="c6E-uM-fXS"/>
+                        <outlet property="startPublishButton" destination="LQ8-1y-Ebe" id="YzW-Nl-ADT"/>
+                        <outlet property="stopPublishButton" destination="srm-Ch-xzc" id="vCu-hS-yHZ"/>
                         <outlet property="switchCameraButton" destination="Kah-wf-3g3" id="3Oo-Yt-CAv"/>
                     </connections>
                 </viewController>
@@ -66,6 +96,12 @@
     <resources>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+        <systemColor name="systemGreenColor">
+            <color red="0.20392156859999999" green="0.78039215689999997" blue="0.34901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </systemColor>
+        <systemColor name="systemPinkColor">
+            <color red="1" green="0.1764705882" blue="0.33333333329999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

@@ -13,6 +13,11 @@
 		5022B6052D01D76C00D5C33B /* libiconv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5022B6022D01D75B00D5C33B /* libiconv.tbd */; };
 		5022B6072D01D7A200D5C33B /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5022B6062D01D7A200D5C33B /* AVFoundation.framework */; };
 		5022B6092D01D7A800D5C33B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5022B6082D01D7A800D5C33B /* Foundation.framework */; };
+		5022B6512D04AD5100D5C33B /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5022B6502D04AD5100D5C33B /* CoreVideo.framework */; };
+		5022B6522D04AED500D5C33B /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5022B64E2D04AD3C00D5C33B /* CoreMedia.framework */; };
+		507457B52D08D6B9003C76C0 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 507457B42D08D6B9003C76C0 /* CoreFoundation.framework */; };
+		507457B72D08D7DD003C76C0 /* AssetsLibrary.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 507457B62D08D7DD003C76C0 /* AssetsLibrary.framework */; };
+		507457B92D08D7FD003C76C0 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 507457B82D08D7FD003C76C0 /* VideoToolbox.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,6 +28,11 @@
 		5022B6022D01D75B00D5C33B /* libiconv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libiconv.tbd; path = usr/lib/libiconv.tbd; sourceTree = SDKROOT; };
 		5022B6062D01D7A200D5C33B /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		5022B6082D01D7A800D5C33B /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		5022B64E2D04AD3C00D5C33B /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
+		5022B6502D04AD5100D5C33B /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
+		507457B42D08D6B9003C76C0 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		507457B62D08D7DD003C76C0 /* AssetsLibrary.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AssetsLibrary.framework; path = System/Library/Frameworks/AssetsLibrary.framework; sourceTree = SDKROOT; };
+		507457B82D08D7FD003C76C0 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -51,12 +61,17 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5022B6522D04AED500D5C33B /* CoreMedia.framework in Frameworks */,
+				5022B6512D04AD5100D5C33B /* CoreVideo.framework in Frameworks */,
+				507457B52D08D6B9003C76C0 /* CoreFoundation.framework in Frameworks */,
+				507457B92D08D7FD003C76C0 /* VideoToolbox.framework in Frameworks */,
 				5022B6032D01D76000D5C33B /* libc++.tbd in Frameworks */,
 				5022B6092D01D7A800D5C33B /* Foundation.framework in Frameworks */,
 				5022B5FD2D01D74500D5C33B /* GStreamer.framework in Frameworks */,
 				5022B6072D01D7A200D5C33B /* AVFoundation.framework in Frameworks */,
 				5022B6052D01D76C00D5C33B /* libiconv.tbd in Frameworks */,
 				5022B6042D01D76700D5C33B /* libresolv.tbd in Frameworks */,
+				507457B72D08D7DD003C76C0 /* AssetsLibrary.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,6 +98,11 @@
 		5022B5FB2D01D74500D5C33B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				507457B82D08D7FD003C76C0 /* VideoToolbox.framework */,
+				507457B62D08D7DD003C76C0 /* AssetsLibrary.framework */,
+				507457B42D08D6B9003C76C0 /* CoreFoundation.framework */,
+				5022B6502D04AD5100D5C33B /* CoreVideo.framework */,
+				5022B64E2D04AD3C00D5C33B /* CoreMedia.framework */,
 				5022B6082D01D7A800D5C33B /* Foundation.framework */,
 				5022B6062D01D7A200D5C33B /* AVFoundation.framework */,
 				5022B6022D01D75B00D5C33B /* libiconv.tbd */,
