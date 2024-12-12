@@ -4,4 +4,5 @@
 
 #import "Library/gst_ios_init.h"
 #import "Library/Types.h"
+#import "Library/CameraPublisher.h"
 #import "Library/CameraPublish.h"

@@ -9,7 +9,7 @@ import UIKit
 import AVFoundation
 
 class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
-    private let cameraPublish: CameraPublish = CameraPublish()
+    private let cameraPublisher: CameraPublisher = CameraPublisher()
     private var publishStatus: Bool = false
 
     @IBOutlet weak var cameraView: UIView!
@@ -121,12 +121,12 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     @IBAction func startPublishTapped(_ sender: UIButton) {
         DispatchQueue.global().async {
-            self.cameraPublish.start("rtsp://streaming-gateway.irvinei.com/demo/dvdvd", withCallback:self.publishStatupUpdate)
+            self.cameraPublisher.start("rtsp://10.0.0.122/usama-liaqat", withCallback:self.publishStatupUpdate)
         }
     }
     
     @IBAction func stopPublishTapped(_ sender: UIButton) {
-        self.cameraPublish.stop()
+        self.cameraPublisher.stop()
     }
     
     private func publishStatupUpdate(state:Bool) {
@@ -148,7 +148,8 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     @objc func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
        // Pass the sample buffer to cameraPublish
         if self.publishStatus {
-            cameraPublish.add(sampleBuffer)
+            print("Camera Buffer Pushed")
+            self.cameraPublisher.add(sampleBuffer)
         }
    }
     

@@ -64,20 +64,22 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
 - (instancetype)init {
     self = [super init];
     if (self) {
+        gst_init(nil, nil);
+        gst_debug_set_default_threshold(GST_LEVEL_FIXME);
         _pipelineContext = (PipelineContext *)malloc(sizeof(PipelineContext)); // Initialize the struct with default values
     }
     return self;
 }
 
 - (void)run:(NSString*)rtsp withCallback:(StatusCallback)live_status {
-    gst_debug_set_threshold_for_name("videoconvert",GST_LEVEL_DEBUG);
-    gst_debug_set_threshold_for_name("x264enc",GST_LEVEL_DEBUG);
-    gst_debug_set_threshold_for_name("rtspclientsink",GST_LEVEL_DEBUG);
-    gst_debug_set_threshold_for_name("capsfilter", GST_LEVEL_DEBUG);
+//    gst_debug_set_threshold_for_name("videoconvert",GST_LEVEL_DEBUG);
+//    gst_debug_set_threshold_for_name("x264enc",GST_LEVEL_DEBUG);
+//    gst_debug_set_threshold_for_name("rtspclientsink",GST_LEVEL_DEBUG);
+//    gst_debug_set_threshold_for_name("capsfilter", GST_LEVEL_DEBUG);
 
     gchar *rtsp_url = (gchar *)[rtsp UTF8String];
 
-    gchar *pipeline_description = g_strdup_printf("avfvideosrc position=front fps=30 ! videoconvert ! queue ! x264enc tune=zerolatency key-int-max=30 ! queue ! rtspclientsink location=%s protocols=tcp debug=true", rtsp_url);
+    gchar *pipeline_description = g_strdup_printf("avfvideosrc device-index=1 fps=30 ! videoconvert ! queue ! x264enc tune=zerolatency key-int-max=30 ! queue ! rtspclientsink location=%s protocols=tcp debug=true", rtsp_url);
     g_print("%s\n", pipeline_description);
 
     GError *error = NULL;
@@ -88,6 +90,7 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
         live_status(false);
         return;
     }
+
     // Add a bus to the pipeline
     GstBus *bus = gst_element_get_bus(pipeline);
     gst_bus_add_watch(bus, bus_call, NULL);  // Attach the bus call function
@@ -122,12 +125,11 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
 //    gst_debug_set_threshold_for_name("rtspclientsink", GST_LEVEL_DEBUG);
     
     gchar *url = (gchar *)[rtsp UTF8String];
-    gst_init(0, nil);
     
     _pipelineContext->mainContext = g_main_context_new();
     _mainLoop = g_main_loop_new(_pipelineContext->mainContext, FALSE);
 
-    gchar *pipeline_description = g_strdup_printf("appsrc format=time name=source ! video/x-raw ! videoconvert ! queue ! x264enc tune=zerolatency key-int-max=30 ! queue ! h264parse ! rtspclientsink location=%s protocols=tcp debug=true", url);
+    gchar *pipeline_description = g_strdup_printf("appsrc name=source ! videoconvert ! video/x-raw,format=I420 ! queue ! x264enc tune=zerolatency key-int-max=30 ! queue ! h264parse ! rtspclientsink location=%s protocols=tcp debug=true", url);
     g_print("%s\n", pipeline_description);
 
     GError *error = NULL;
@@ -137,6 +139,21 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
         g_clear_error(&error);
         live_status(false);
         return;
+    }
+    
+    GstElement *appsrcElement = gst_bin_get_by_name_recurse_up(GST_BIN (pipeline), "source");
+    if (appsrcElement) {
+        _pipelineContext->appsrc = appsrcElement;
+        GstCaps *caps = gst_caps_new_simple("video/x-raw",
+                                            "format", G_TYPE_STRING, "BGRA",
+                                            "width", G_TYPE_INT, 1920,
+                                            "height", G_TYPE_INT, 1080,
+                                            "framerate", GST_TYPE_FRACTION, 30, 1,
+                                            NULL);
+        gst_app_src_set_caps(GST_APP_SRC(_pipelineContext->appsrc), caps);
+        gst_caps_unref(caps);
+    } else {
+        NSLog(@"Failed to retrieve the appsrc element.");
     }
 
     // Add a bus to the pipeline
@@ -155,12 +172,7 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
         return;
     }
     
-    GstElement *appsrcElement = gst_bin_get_by_name_recurse_up(GST_BIN (pipeline), "source");
-    if (appsrcElement) {
-        _pipelineContext->appsrc = appsrcElement;
-    } else {
-        NSLog(@"Failed to retrieve the appsrc element.");
-    }
+
 
 
     _pipelineContext->pipeline = pipeline;
@@ -197,21 +209,6 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
     }
 }
 
-- (NSData *)sampleBufferToData:(CMSampleBufferRef)sampleBuffer {
-    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    CVPixelBufferLockBaseAddress(imageBuffer,0);
-
-    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
-    size_t width = CVPixelBufferGetWidth(imageBuffer);
-    size_t height = CVPixelBufferGetHeight(imageBuffer);
-    void *src_buff = CVPixelBufferGetBaseAddress(imageBuffer);
-
-    NSData *data = [NSData dataWithBytes:src_buff length:bytesPerRow * height];
-
-    CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
-    return data;
-}
-
 - (void)addBuffer:(CMSampleBufferRef)sampleBuffer {
     if (!_pipelineContext->appsrc) {
         NSLog(@"appsrc is not initialized.");
@@ -223,13 +220,32 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
     }
 
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    if (!imageBuffer) {
+        NSLog(@"Error: imageBuffer is NULL.");
+        return;
+    }
+    OSType pixelFormat = CVPixelBufferGetPixelFormatType(imageBuffer);
+    size_t width = CVPixelBufferGetWidth(imageBuffer);
+    size_t height = CVPixelBufferGetHeight(imageBuffer);
+    NSLog(@"Resolution: %zu x %zu", width,height);  // Example: 1920 x 1080
+    NSLog(@"Pixel format: %u", pixelFormat);  // Example: kCVPixelFormatType_32BGRA
+
     CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
     
     size_t bufferSize = CVPixelBufferGetDataSize(imageBuffer);
+    if (bufferSize == 0) {
+        g_printerr("Error: Data size is zero, invalid buffer\n");
+        return;
+    }
     void *baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
     
     // Create GstBuffer
     GstBuffer *gstBuffer = gst_buffer_new_allocate(NULL, bufferSize, NULL);
+    CMTime pts = CMSampleBufferGetOutputPresentationTimeStamp(sampleBuffer);
+    CMTime dts = CMSampleBufferGetDecodeTimeStamp(sampleBuffer);
+    GstClockTime gst_pts = CMTimeGetSeconds(pts) * GST_SECOND;
+    GstClockTime gst_dts = CMTimeGetSeconds(dts) * GST_SECOND;
+
     
     if (!gstBuffer) {
         NSLog(@"Failed to allocate GstBuffer.");
@@ -248,11 +264,14 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
         return;
     }
     
-    CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
 
     // Check if gstBuffer is valid before pushing
     if (GST_IS_BUFFER(gstBuffer)) {
+        GST_BUFFER_PTS (gstBuffer) = gst_pts;
+        GST_BUFFER_DTS (gstBuffer) = gst_dts;
         GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(_pipelineContext->appsrc), gstBuffer);
+        NSLog(@"pushing buffer to appsrc: %s", gst_flow_get_name(ret));
+
         if (ret != GST_FLOW_OK) {
             NSLog(@"Failed to push buffer to appsrc. Flow return: %d", ret);
         }
@@ -262,6 +281,7 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
 
     // Do not unref until you are sure it is not used anymore
     gst_buffer_unref(gstBuffer);
+    CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
 }
 
 
