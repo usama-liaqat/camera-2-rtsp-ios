@@ -52,16 +52,10 @@
 }
 
 
-- (void)free {
-    if (self.sampleBuffer) {
-//        CFRelease(self.sampleBuffer);
-//        self.sampleBuffer = NULL;
-    }
-}
-
-
 - (void)dealloc {
-    [self free];
+    if (self.sampleBuffer) {
+        CFRelease(self.sampleBuffer);
+    }
     NSLog(@"BufferItem deallocated and cleared.");
 
 }

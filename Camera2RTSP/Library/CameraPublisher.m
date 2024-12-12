@@ -201,20 +201,19 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
         }
  
         
-        GstClockTime gst_pts = isnan(ptsSeconds) ? GST_CLOCK_TIME_NONE: (ptsSeconds * GST_SECOND);
-        GstClockTime gst_dts = isnan(dtsSeconds) ? GST_CLOCK_TIME_NONE: (dtsSeconds * GST_SECOND);
+//        GstClockTime gst_pts = isnan(ptsSeconds) ? GST_CLOCK_TIME_NONE: (ptsSeconds * GST_SECOND);
+//        GstClockTime gst_dts = isnan(dtsSeconds) ? GST_CLOCK_TIME_NONE: (dtsSeconds * GST_SECOND);
         
         GST_BUFFER_OFFSET (gstBuffer) = ctx->offset++;
         GST_BUFFER_OFFSET_END (gstBuffer) = GST_BUFFER_OFFSET (gstBuffer) + 1;
-        GST_BUFFER_PTS (gstBuffer) = gst_pts;
-        GST_BUFFER_DTS (gstBuffer) = gst_dts;
+//        GST_BUFFER_PTS (gstBuffer) = gst_pts;
+//        GST_BUFFER_DTS (gstBuffer) = gst_dts;
         GST_BUFFER_TIMESTAMP(gstBuffer) = buffer.timestamp;
         GST_BUFFER_DURATION(gstBuffer) = buffer.duration;
         
         GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), gstBuffer);
         NSLog(@"pushing buffer to appsrc: %s", gst_flow_get_name(ret));
         CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
-        [buffer free];
         return ret;
     } else {
         NSLog(@"No data in buffer queue.");
@@ -236,7 +235,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
     if (self) {
         self.lock = [[NSLock alloc] init];
         gst_init(nil, nil);
-        gst_debug_set_default_threshold(GST_LEVEL_ERROR);
+        gst_debug_set_default_threshold(GST_LEVEL_FIXME);
         self.isRunning = NO;
         self.ctx = (PublisherContext *)malloc(sizeof(PublisherContext)); // Initialize the struct with default values
         self.ctx->pipeline = NULL;
@@ -269,7 +268,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
     self.ctx->mainContext = g_main_context_new();
     self.ctx->mainLoop = g_main_loop_new(self.ctx->mainContext, FALSE);
 
-    gchar *pipeline_description = g_strdup_printf("appsrc name=source ! videoconvert ! video/x-raw,format=I420 ! queue ! x264enc tune=zerolatency key-int-max=30 ! queue ! h264parse ! rtspclientsink location=%s protocols=tcp", url);
+    gchar *pipeline_description = g_strdup_printf("appsrc name=source is-live=true format=time ! videoconvert ! video/x-raw,format=I420 ! queue ! x264enc tune=zerolatency key-int-max=30 ! queue ! h264parse ! rtspclientsink location=%s protocols=tcp debug=true", url);
     g_print("%s\n", pipeline_description);
 
     GError *error = NULL;

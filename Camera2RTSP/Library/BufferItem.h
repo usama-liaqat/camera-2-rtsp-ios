@@ -33,7 +33,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 - (instancetype) initWithSampleBuffer:(CMSampleBufferRef)sampleBuffer timestamp:(GstClockTime)timestamp duration:(GstClockTime)duration;
-- (void)free;
 - (void)dealloc;
 
 @end
