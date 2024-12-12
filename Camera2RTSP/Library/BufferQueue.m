@@ -17,14 +17,16 @@
     if (self) {
         self.lock = [[NSConditionLock alloc] initWithCondition:0];
         self.queue = [NSMutableArray array];
+        self.index = 0;
     }
     return self;
 }
 
 - (void)insert:(BufferItem*)buffer {
     [self.lock lock];
+    buffer.index = self.index++;
     [self.queue addObject:buffer];
-    NSLog(@"INSERT --- Buffer Queue Items -> %lu", (unsigned long)self.queue.count);
+    NSLog(@"INSERT --- Buffer Queue Items -> %lu -- %d", (unsigned long)self.queue.count, buffer.index);
     [self.lock unlockWithCondition:1];
 }
 
@@ -37,7 +39,7 @@
         [self.queue removeObjectAtIndex:0]; // Remove the first element
     }
     
-    NSLog(@"POP --- Buffer Queue Items -> %lu", (unsigned long)self.queue.count);
+    NSLog(@"POP --- Buffer Queue Items -> %lu -- %d", (unsigned long)self.queue.count,buffer.index);
 
     [self.lock unlockWithCondition:(self.queue.count > 0 ? 1 : 0)];
     return buffer;

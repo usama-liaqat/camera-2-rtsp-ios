@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface BufferQueue : NSObject
 @property (nonatomic) NSMutableArray<BufferItem *> *queue;
 @property (nonatomic) NSConditionLock *lock;
+@property (nonatomic) int index;
 
 
 - (void)insert:(BufferItem*)buffer;

@@ -28,7 +28,9 @@ typedef struct {
     GstElement * _Nonnull appsrc;
     int width;
     int height;
+    int offset;
     BufferQueue * _Nonnull queue; // Add mutable array
+    CMClockRef _Nonnull inputClock;
 } PublisherContext;
 
 static GstFlowReturn need_data(GstElement * _Nonnull appsrc, guint unused, PublisherContext * _Nonnull ctx);
