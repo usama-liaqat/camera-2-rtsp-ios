@@ -23,7 +23,6 @@
 
 typedef struct {
     GMainLoop * _Nonnull mainLoop;
-    GMainContext * _Nonnull mainContext;
     GstElement * _Nonnull pipeline;
     GstElement * _Nonnull appsrc;
     int width;

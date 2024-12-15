@@ -27,7 +27,9 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         setupCamera()
         buttonIsEnabled(button: startPublishButton, status: true, color: .systemGreen)
         buttonIsEnabled(button: stopPublishButton, status: false, color: .systemRed)
+
     }
+    
 
     func setupCamera() {
         // Initialize capture session
@@ -72,10 +74,13 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             } else {
                 print("Unable to add input")
             }
+            
+            let deviceOrientation = UIDevice.current.orientation
         } catch {
             print("Error setting up camera input: \(error)")
         }
     }
+    
     
     func setupVideoOutput() {
         // Configure video output to capture frames
@@ -121,7 +126,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     @IBAction func startPublishTapped(_ sender: UIButton) {
         DispatchQueue.global().async {
-            self.cameraPublisher.start("rtsp://streaming-gateway.irvinei.com/demo/dvdvd", withCallback:self.publishStatupUpdate)
+            self.cameraPublisher.start("rtsp://10.1.10.131/usama-liaqat", withCallback:self.publishStatupUpdate)
         }
     }
     
@@ -148,10 +153,11 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     @objc func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
        // Pass the sample buffer to cameraPublish
         if self.publishStatus {
-            print("Camera Buffer Pushed")
             self.cameraPublisher.add(sampleBuffer)
         }
    }
+    
+
     
 }
 
