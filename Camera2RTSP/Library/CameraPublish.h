@@ -33,7 +33,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)run:(NSString*)rtsp withCallback:(StatusCallback)live_status;
 - (void)stop;
 - (void)addBuffer:(CMSampleBufferRef)sampleBuffer;
-- (NSData *)sampleBufferToData:(CMSampleBufferRef)sampleBuffer;
 
 @end
 

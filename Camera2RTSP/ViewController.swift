@@ -9,7 +9,7 @@ import UIKit
 import AVFoundation
 
 class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
-    private let cameraPublisher: CameraPublisher = CameraPublisher()
+    private let cameraPublisher: VideoServer = VideoServer()
     private var publishStatus: Bool = false
 
     @IBOutlet weak var cameraView: UIView!
@@ -68,6 +68,16 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         }
         
         do {
+            try captureDevice.lockForConfiguration()
+            let desiredFrameRate: Int32 = 30 // Set your desired frame rate here
+            if captureDevice.activeFormat.videoSupportedFrameRateRanges.contains(where: { $0.minFrameRate <= Float64(desiredFrameRate) && Float64(desiredFrameRate) <= $0.maxFrameRate }) {
+                print("Framerate is set to --- ",desiredFrameRate)
+                captureDevice.activeVideoMinFrameDuration = CMTime(value: 1, timescale: desiredFrameRate)
+                captureDevice.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: desiredFrameRate)
+            } else {
+                print("Desired frame rate not supported")
+            }
+            captureDevice.unlockForConfiguration()
             let input = try AVCaptureDeviceInput(device: captureDevice)
             if captureSession?.canAddInput(input) == true {
                 captureSession?.addInput(input)
@@ -75,7 +85,6 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
                 print("Unable to add input")
             }
             
-            let deviceOrientation = UIDevice.current.orientation
         } catch {
             print("Error setting up camera input: \(error)")
         }
@@ -126,7 +135,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     @IBAction func startPublishTapped(_ sender: UIButton) {
         DispatchQueue.global().async {
-            self.cameraPublisher.start("rtsp://10.1.10.131/usama-liaqat", withCallback:self.publishStatupUpdate)
+            self.cameraPublisher.start("rtsp://10.1.10.129/usama-liaqat", withCallback:self.publishStatupUpdate)
         }
     }
     
@@ -152,6 +161,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     @objc func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
        // Pass the sample buffer to cameraPublish
+        connection.videoRotationAngle = 0
         if self.publishStatus {
             self.cameraPublisher.add(sampleBuffer)
         }

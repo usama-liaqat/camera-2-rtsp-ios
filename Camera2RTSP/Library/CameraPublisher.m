@@ -134,6 +134,8 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
 {
     
     BufferItem *buffer = [ctx->queue pop];
+    NSLog(@"NEED_DATA  ---  buffer -> %@", buffer);
+
     if (buffer != nil) {
         CMSampleBufferRef sampleBuffer = buffer.sampleBuffer;
         int width =  buffer.width;
@@ -170,7 +172,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
                                                 "format", G_TYPE_STRING, format,
                                                 "width", G_TYPE_INT, (guint)width,
                                                 "height", G_TYPE_INT, (guint)height,
-                                                "framerate", GST_TYPE_FRACTION, 25, 1,
+                                                "framerate", GST_TYPE_FRACTION, 30, 1,
                                                 NULL);
             gst_app_src_set_caps(GST_APP_SRC(appsrc), caps);
             gst_caps_unref(caps);
@@ -235,7 +237,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
     if (self) {
         self.lock = [[NSLock alloc] init];
         gst_init(nil, nil);
-        gst_debug_set_default_threshold(GST_LEVEL_ERROR);
+        gst_debug_set_default_threshold(GST_LEVEL_FIXME);
         self.isRunning = NO;
         self.ctx = (PublisherContext *)malloc(sizeof(PublisherContext)); // Initialize the struct with default values
         self.ctx->pipeline = NULL;
@@ -267,7 +269,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
     
     self.ctx->mainLoop = g_main_loop_new(NULL, FALSE);
 
-    gchar *pipeline_description = g_strdup_printf("appsrc name=source ! videoflip method=clockwise ! videorate skip-to-first=true ! video/x-raw,framerate=25/1 ! videoconvert ! video/x-raw,format=I420 ! queue max-size-buffers=512 max-size-time=0 max-size-bytes=0 ! vtenc_h264 allow-frame-reordering=false realtime=true ! queue ! h264parse ! rtspclientsink location=%s protocols=tcp debug=true", url);
+    gchar *pipeline_description = g_strdup_printf("appsrc name=source ! queue ! videoflip method=clockwise ! videorate skip-to-first=true ! video/x-raw,framerate=30/1 ! queue ! videoconvert ! video/x-raw,format=I420 ! vtenc_h264 allow-frame-reordering=false realtime=true ! queue ! h264parse config-interval=-1 ! rtspclientsink location=%s protocols=tcp latency=500 debug=true", url);
     g_print("%s\n", pipeline_description);
 
     GError *error = NULL;
@@ -285,6 +287,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
         self.ctx->appsrc = appsrcElement;
         g_object_set(appsrcElement,
              "format", GST_FORMAT_TIME,
+             "do-timestamp", (gboolean)true,
              "is-live", (gboolean)true,
              NULL
          );
