@@ -8,9 +8,11 @@
 #ifndef VideoServer_h
 #define VideoServer_h
 #import <Foundation/Foundation.h>
+#import <CoreMedia/CoreMedia.h>
+
 
 #include <gst/gst.h>
-#include <gst/app/gstappsink.h>
+#include <gst/app/app.h>
 #include <gst/rtsp-server/rtsp-server.h>
 
 #include <sys/socket.h>
@@ -20,6 +22,8 @@
 
 #include "Types.h"
 #import "BufferQueue.h"
+#import "VideoPublisher.h"
+
 
 typedef struct {
     gchar * _Nullable rtsp_url;
@@ -58,6 +62,7 @@ typedef void (^StatusCallback)(BOOL status);
 @property (nonatomic) GstRTSPServer *server;
 @property (nonatomic) GMainLoop *mainLoop;
 @property (nonatomic) GlobalContext *globalContext;
+@property (nonatomic, nullable) VideoPublisher *videoPublisher;
 
 
 - (void)start:(NSString*)rtsp withCallback:(StatusCallback)live_status;

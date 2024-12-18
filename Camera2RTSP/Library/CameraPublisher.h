@@ -30,6 +30,7 @@ typedef struct {
     int offset;
     BufferQueue * _Nonnull queue; // Add mutable array
     CMClockRef _Nonnull inputClock;
+    GstClockTime timestamp;
 } PublisherContext;
 
 static GstFlowReturn need_data(GstElement * _Nonnull appsrc, guint unused, PublisherContext * _Nonnull ctx);

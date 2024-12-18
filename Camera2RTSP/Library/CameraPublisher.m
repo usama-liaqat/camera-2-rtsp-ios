@@ -7,60 +7,6 @@
 
 #import "CameraPublisher.h"
 
-
-static void get_sample_buffer(PublisherContext *ctx, CMSampleBufferRef sbuf,GstClockTime *outTimestamp,GstClockTime *outDuration ) {
-    CMSampleTimingInfo time_info;
-    GstClockTime timestamp, avf_timestamp, duration, input_clock_now, input_clock_diff, running_time;
-    CMItemCount num_timings;
-    GstClock *clock;
-    CMTime now;
-
-    timestamp = GST_CLOCK_TIME_NONE;
-    duration = GST_CLOCK_TIME_NONE;
-    if (CMSampleBufferGetOutputSampleTimingInfoArray(sbuf, 1, &time_info, &num_timings) == noErr) {
-    avf_timestamp = gst_util_uint64_scale (GST_SECOND,
-            time_info.presentationTimeStamp.value, time_info.presentationTimeStamp.timescale);
-
-    if (CMTIME_IS_VALID (time_info.duration) && time_info.duration.timescale != 0)
-      duration = gst_util_uint64_scale (GST_SECOND,
-          time_info.duration.value, time_info.duration.timescale);
-
-        now = CMClockGetTime(ctx->inputClock);
-    input_clock_now = gst_util_uint64_scale (GST_SECOND,
-        now.value, now.timescale);
-    input_clock_diff = input_clock_now - avf_timestamp;
-
-    GST_OBJECT_LOCK (ctx->appsrc);
-    clock = GST_ELEMENT_CLOCK (ctx->appsrc);
-    if (clock) {
-      running_time = gst_clock_get_time (clock) - ctx->appsrc->base_time;
-      /* We use presentationTimeStamp to determine how much time it took
-       * between capturing and receiving the frame in our delegate
-       * (e.g. how long it spent in AVF queues), then we subtract that time
-       * from our running time to get the actual timestamp.
-       */
-      if (running_time >= input_clock_diff)
-        timestamp = running_time - input_clock_diff;
-      else
-        timestamp = running_time;
-
-      GST_DEBUG_OBJECT (ctx->appsrc, "AVF clock: %"GST_TIME_FORMAT ", AVF PTS: %"GST_TIME_FORMAT
-          ", AVF clock diff: %"GST_TIME_FORMAT
-          ", running time: %"GST_TIME_FORMAT ", out PTS: %"GST_TIME_FORMAT,
-          GST_TIME_ARGS (input_clock_now), GST_TIME_ARGS (avf_timestamp),
-          GST_TIME_ARGS (input_clock_diff),
-          GST_TIME_ARGS (running_time), GST_TIME_ARGS (timestamp));
-    } else {
-      /* no clock, can't set timestamps */
-      timestamp = GST_CLOCK_TIME_NONE;
-    }
-    GST_OBJECT_UNLOCK (ctx->appsrc);
-    }
-
-    *outTimestamp = timestamp;
-    *outDuration = duration;
-}
-
 static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
 //    PublisherContext *ctx = (PublisherContext *)data;
     const gchar *message_type_name = gst_message_type_get_name(GST_MESSAGE_TYPE(msg));
@@ -143,22 +89,13 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
         NSString *type = buffer.type;
         
         const char *format = [type UTF8String];
-        double ptsSeconds = CMTimeGetSeconds(buffer.pts);
-        double dtsSeconds = CMTimeGetSeconds(buffer.dts);
-        
-        NSString *timestampStr = gstClockTimeToString(buffer.timestamp);
-        NSString *durationStr = gstClockTimeToString(buffer.duration);
 
         // Log the values from the dictionary
 //        NSLog(@"SampleBuffer: %@", sampleBuffer);
         NSDictionary *logDict = @{
             @"Width" : @(width),
             @"Height" : @(height),
-            @"PTS" : @(ptsSeconds),
-            @"DTS" : @(dtsSeconds),
             @"Type" : type,
-            @"Timestamp" : timestampStr,
-            @"Duration" : durationStr,
             @"Offset" : @(ctx->offset),
         };
 
@@ -205,13 +142,17 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
         
 //        GstClockTime gst_pts = isnan(ptsSeconds) ? GST_CLOCK_TIME_NONE: (ptsSeconds * GST_SECOND);
 //        GstClockTime gst_dts = isnan(dtsSeconds) ? GST_CLOCK_TIME_NONE: (dtsSeconds * GST_SECOND);
+//        
+//        GST_BUFFER_OFFSET (gstBuffer) = ctx->offset++;
+//        GST_BUFFER_OFFSET_END (gstBuffer) = GST_BUFFER_OFFSET (gstBuffer) + 1;
+////        GST_BUFFER_PTS (gstBuffer) = gst_pts;
+////        GST_BUFFER_DTS (gstBuffer) = gst_dts;
+//        GST_BUFFER_TIMESTAMP(gstBuffer) = buffer.timestamp;
+//        GST_BUFFER_DURATION(gstBuffer) = buffer.duration;
         
-        GST_BUFFER_OFFSET (gstBuffer) = ctx->offset++;
-        GST_BUFFER_OFFSET_END (gstBuffer) = GST_BUFFER_OFFSET (gstBuffer) + 1;
-//        GST_BUFFER_PTS (gstBuffer) = gst_pts;
-//        GST_BUFFER_DTS (gstBuffer) = gst_dts;
-        GST_BUFFER_TIMESTAMP(gstBuffer) = buffer.timestamp;
-        GST_BUFFER_DURATION(gstBuffer) = buffer.duration;
+        GST_BUFFER_PTS (gstBuffer) = ctx->timestamp;
+        GST_BUFFER_DURATION (gstBuffer) = gst_util_uint64_scale_int (1, GST_SECOND, 30);
+        ctx->timestamp += GST_BUFFER_DURATION (gstBuffer);
         
         GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), gstBuffer);
         NSLog(@"NEED_DATA  ---  pushing buffer to appsrc: %s", gst_flow_get_name(ret));
@@ -245,6 +186,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
         self.ctx->width = 0;
         self.ctx->height = 0;
         self.ctx->offset = 0;
+        self.ctx->timestamp = 0;
         self.ctx->queue = [[BufferQueue alloc] init];
         self.ctx->inputClock = CMClockGetHostTimeClock();
 
@@ -268,8 +210,15 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
     gchar *url = (gchar *)[rtsp UTF8String];
     
     self.ctx->mainLoop = g_main_loop_new(NULL, FALSE);
-
-    gchar *pipeline_description = g_strdup_printf("appsrc name=source ! queue ! videoflip method=clockwise ! videorate skip-to-first=true ! video/x-raw,framerate=30/1 ! queue ! videoconvert ! video/x-raw,format=I420 ! vtenc_h264 allow-frame-reordering=false realtime=true ! queue ! h264parse config-interval=-1 ! rtspclientsink location=%s protocols=tcp latency=500 debug=true", url);
+    
+    gchar *pipeline_description = g_strdup_printf("appsrc name=source ! "
+                                                  "queue ! videoflip method=clockwise ! "
+                                                  "videorate skip-to-first=true ! video/x-raw,framerate=30/1 ! "
+                                                  "videoscale ! video/x-raw,width=1080,height=1920 ! "
+                                                  "queue ! videoconvert ! video/x-raw,format=I420 ! "
+                                                  "vtenc_h264 bitrate=5000 allow-frame-reordering=false realtime=true ! "
+                                                  "queue ! h264parse config-interval=-1 ! "
+                                                  "rtspclientsink location=%s latency=1 debug=true", url);
     g_print("%s\n", pipeline_description);
 
     GError *error = NULL;
@@ -364,19 +313,9 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
         NSLog(@"Received nil sampleBuffer.");
         return;
     }
-    
-    
-    GstClockTime timestamp, duration;
-
-    get_sample_buffer(self.ctx, sampleBuffer, &timestamp, &duration);
-    
-    if (timestamp == GST_CLOCK_TIME_NONE) {
-        NSLog(@"Received nil timestamp.");
-        return;
-    }
 
     
-    BufferItem *item = [[BufferItem alloc] initWithSampleBuffer:sampleBuffer timestamp:timestamp duration:duration];
+    BufferItem *item = [[BufferItem alloc] initWithSampleBuffer:sampleBuffer];
     if(item != nil) {
         [self.ctx->queue insert:item];
         GstState state, pending;

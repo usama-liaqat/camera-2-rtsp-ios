@@ -9,7 +9,7 @@ import UIKit
 import AVFoundation
 
 class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
-    private let cameraPublisher: VideoServer = VideoServer()
+    private let cameraPublisher: CameraPublisher = CameraPublisher()
     private var publishStatus: Bool = false
 
     @IBOutlet weak var cameraView: UIView!
@@ -20,7 +20,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     var captureSession: AVCaptureSession?
     var videoPreviewLayer: AVCaptureVideoPreviewLayer?
-    var currentCameraPosition: AVCaptureDevice.Position = .front
+    var currentCameraPosition: AVCaptureDevice.Position = .back
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -135,7 +135,8 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     @IBAction func startPublishTapped(_ sender: UIButton) {
         DispatchQueue.global().async {
-            self.cameraPublisher.start("rtsp://10.1.10.129/usama-liaqat", withCallback:self.publishStatupUpdate)
+//            self.cameraPublisher.start("rtsp://10.1.10.129/usama-liaqat", withCallback:self.publishStatupUpdate)
+            self.cameraPublisher.start("rtsp://sn-webrtc.snipback.com/usama-liaqat", withCallback:self.publishStatupUpdate)
         }
     }
     
@@ -161,7 +162,6 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     @objc func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
        // Pass the sample buffer to cameraPublish
-        connection.videoRotationAngle = 0
         if self.publishStatus {
             self.cameraPublisher.add(sampleBuffer)
         }

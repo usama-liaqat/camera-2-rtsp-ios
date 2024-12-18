@@ -7,80 +7,98 @@
 
 #import "VideoServer.h"
 
-static void server_get_sample_buffer(GlobalContext *ctx, CMSampleBufferRef sbuf,GstClockTime *outTimestamp,GstClockTime *outDuration ) {
-    CMSampleTimingInfo time_info;
-    GstClockTime timestamp, avf_timestamp, duration, input_clock_now, input_clock_diff, running_time;
-    CMItemCount num_timings;
-    GstClock *clock;
-    CMTime now;
-
-    timestamp = GST_CLOCK_TIME_NONE;
-    duration = GST_CLOCK_TIME_NONE;
-    if (CMSampleBufferGetOutputSampleTimingInfoArray(sbuf, 1, &time_info, &num_timings) == noErr) {
-    avf_timestamp = gst_util_uint64_scale (GST_SECOND,
-            time_info.presentationTimeStamp.value, time_info.presentationTimeStamp.timescale);
-
-    if (CMTIME_IS_VALID (time_info.duration) && time_info.duration.timescale != 0)
-      duration = gst_util_uint64_scale (GST_SECOND,
-          time_info.duration.value, time_info.duration.timescale);
-
-        now = CMClockGetTime(ctx->inputClock);
-    input_clock_now = gst_util_uint64_scale (GST_SECOND,
-        now.value, now.timescale);
-    input_clock_diff = input_clock_now - avf_timestamp;
-
-    GST_OBJECT_LOCK (ctx->appsrc);
-    clock = GST_ELEMENT_CLOCK (ctx->appsrc);
-    if (clock) {
-      running_time = gst_clock_get_time (clock) - ctx->appsrc->base_time;
-      /* We use presentationTimeStamp to determine how much time it took
-       * between capturing and receiving the frame in our delegate
-       * (e.g. how long it spent in AVF queues), then we subtract that time
-       * from our running time to get the actual timestamp.
-       */
-      if (running_time >= input_clock_diff)
-        timestamp = running_time - input_clock_diff;
-      else
-        timestamp = running_time;
-
-      GST_DEBUG_OBJECT (ctx->appsrc, "AVF clock: %"GST_TIME_FORMAT ", AVF PTS: %"GST_TIME_FORMAT
-          ", AVF clock diff: %"GST_TIME_FORMAT
-          ", running time: %"GST_TIME_FORMAT ", out PTS: %"GST_TIME_FORMAT,
-          GST_TIME_ARGS (input_clock_now), GST_TIME_ARGS (avf_timestamp),
-          GST_TIME_ARGS (input_clock_diff),
-          GST_TIME_ARGS (running_time), GST_TIME_ARGS (timestamp));
-    } else {
-      /* no clock, can't set timestamps */
-      timestamp = GST_CLOCK_TIME_NONE;
-    }
-    GST_OBJECT_UNLOCK (ctx->appsrc);
-    }
-
-    *outTimestamp = timestamp;
-    *outDuration = duration;
-}
-
 static GstFlowReturn server_need_data (GstElement * appsrc, guint unused, StreamContext *ctx) {
-    GstBuffer *buffer;
-    guint size;
-    GstFlowReturn ret;
 
-    size = ctx->videoInfo->width * ctx->videoInfo->height * 2;
+    
+    BufferItem *buffer = [ctx->globalCtx->queue pop];
+    NSLog(@"NEED_DATA  ---  buffer -> %@", buffer);
+    
+    if (buffer != nil) {
+        CMSampleBufferRef sampleBuffer = buffer.sampleBuffer;
+        int width =  buffer.width;
+        int height = buffer.height;
+        NSString *type = buffer.type;
+        
+        const char *format = [type UTF8String];
+        
+        NSDictionary *logDict = @{
+            @"Width" : @(width),
+            @"Height" : @(height),
+            @"Type" : type,
+        };
+        NSLog(@"NEED_DATA  ---  %@", logDict);
 
-    buffer = gst_buffer_new_allocate (NULL, size, NULL);
+        
+        if (width != ctx->videoInfo->width || height != ctx->videoInfo->height) {
+            ctx->videoInfo->width = width;
+            ctx->videoInfo->height = height;
+            NSLog(@"NEED_DATA  ---  Different Height.");
+            GstCaps *caps = gst_caps_new_simple("video/x-raw",
+                                                "format", G_TYPE_STRING, format,
+                                                "width", G_TYPE_INT, (guint)width,
+                                                "height", G_TYPE_INT, (guint)height,
+                                                "framerate", GST_TYPE_FRACTION, 30, 1,
+                                                NULL);
+            gst_app_src_set_caps(GST_APP_SRC(appsrc), caps);
+            gst_caps_unref(caps);
+        }
+        CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+        if (!imageBuffer) {
+            NSLog(@"NEED_DATA  ---  Error: imageBuffer is NULL.");
+            return GST_FLOW_ERROR;
+        }
+        CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+        size_t bufferSize = CVPixelBufferGetDataSize(imageBuffer);
+        if (bufferSize == 0) {
+            g_printerr("NEED_DATA  ---  Error: Data size is zero, invalid buffer\n");
+            return GST_FLOW_ERROR;
+        }
+        void *baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
+        GstBuffer *gstBuffer = gst_buffer_new_allocate(NULL, bufferSize, NULL);
 
-    /* this makes the image black/white */
-    gst_buffer_memset (buffer, 0, ctx->white ? 0xff : 0x0, size);
+        GstMapInfo map;
+        if (gst_buffer_map(gstBuffer, &map, GST_MAP_WRITE)) {
+            memcpy(map.data, baseAddress, bufferSize);
+            gst_buffer_unmap(gstBuffer, &map);
+        } else {
+            NSLog(@"NEED_DATA  ---  Failed to map GstBuffer.");
+            CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+            gst_buffer_unref(gstBuffer); // Ensure buffer is unreferenced on failure
+            return GST_FLOW_ERROR;
+        }
+        
+        GST_BUFFER_PTS (gstBuffer) = ctx->timestamp;
+        GST_BUFFER_DURATION (gstBuffer) = gst_util_uint64_scale_int (1, GST_SECOND, 30);
+        ctx->timestamp += GST_BUFFER_DURATION (gstBuffer);
+        
+        GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), gstBuffer);
+        NSLog(@"NEED_DATA  ---  pushing buffer to appsrc: %s", gst_flow_get_name(ret));
+        CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+        return ret;
+    } else {
+        GstBuffer *buffer;
+        guint size;
+        GstFlowReturn ret;
+        size = ctx->videoInfo->width * ctx->videoInfo->height * 2;
 
-    ctx->white = !ctx->white;
+        buffer = gst_buffer_new_allocate (NULL, size, NULL);
 
-    /* increment the timestamp every 1/2 second */
-    GST_BUFFER_PTS (buffer) = ctx->timestamp;
-    GST_BUFFER_DURATION (buffer) = gst_util_uint64_scale_int (1, GST_SECOND, 30);
-    ctx->timestamp += GST_BUFFER_DURATION (buffer);
+        /* this makes the image black/white */
+        gst_buffer_memset (buffer, 0, ctx->white ? 0xff : 0x0, size);
 
-    g_signal_emit_by_name (appsrc, "push-buffer", buffer, &ret);
-    gst_buffer_unref (buffer);
+        ctx->white = !ctx->white;
+
+        /* increment the timestamp every 1/2 second */
+        GST_BUFFER_PTS (buffer) = ctx->timestamp;
+        GST_BUFFER_DURATION (buffer) = gst_util_uint64_scale_int (1, GST_SECOND, 30);
+        ctx->timestamp += GST_BUFFER_DURATION (buffer);
+
+        g_signal_emit_by_name (appsrc, "push-buffer", buffer, &ret);
+        gst_buffer_unref (buffer);
+    }
+
+
+    
     return GST_FLOW_OK;
 }
 
@@ -99,6 +117,7 @@ static void media_configure (GstRTSPMediaFactory * factory, GstRTSPMedia * media
     ctx->videoInfo->height = 720;
     ctx->white = FALSE;
     ctx->timestamp = 0;
+    ctx->globalCtx = context;
 
     g_object_set_data_full (G_OBJECT (media), "rtsp-extra-data", ctx, (GDestroyNotify) ctx_free);
     element = gst_rtsp_media_get_element (media);
@@ -162,12 +181,14 @@ BOOL isPortAvailable(int port) {
 - (instancetype)init {
     self = [super init];
     _globalContext = (GlobalContext *)malloc(sizeof(GlobalContext)); // Initialize the struct with default values
+    _globalContext->queue = [[BufferQueue alloc] init];
+
     _globalContext->inputClock = CMClockGetHostTimeClock();
 
     return self;
 }
 
-- (void)start:(NSString*)rtsp withCallback:(StatusCallback)live_status {
+- (void)start:(NSString*)output_rtsp withCallback:(StatusCallback)live_status {
     @autoreleasepool {
         int port = 554;
         if (isPortAvailable(port)) {
@@ -189,7 +210,15 @@ BOOL isPortAvailable(int port) {
     g_object_set (_server, "service", Port, NULL);
     mounts = gst_rtsp_server_get_mount_points (_server);
     
-    launch_string = g_strdup_printf("( appsrc name=video-src ! videoconvert ! video/x-raw,format=I420 ! videorate ! video/x-raw,framerate=25/1  ! vtenc_h264 ! rtph264pay name=pay0 pt=96 )");
+    launch_string = g_strdup_printf("( "
+                                    "appsrc name=video-src ! "
+                                    "videoflip method=clockwise ! "
+                                    "videorate ! video/x-raw,framerate=30/1 ! "
+                                    "videoscale ! video/x-raw,width=1080,height=1920 ! "
+                                    "videoconvert ! video/x-raw,format=I420 ! "
+                                    "vtenc_h264 bitrate=5000 allow-frame-reordering=false realtime=true ! "
+                                    "rtph264pay name=pay0 pt=96 "
+                                    ")");
     g_print("%s\n", launch_string);
     
     factory = gst_rtsp_media_factory_new ();
@@ -214,10 +243,13 @@ BOOL isPortAvailable(int port) {
 
     
     live_status(true);
-    
+    NSString *local_rtsp_url = [NSString stringWithUTF8String:rtsp_url];
+    _videoPublisher = [[VideoPublisher alloc] initWithSourceandOutputURI:local_rtsp_url outputURI:output_rtsp];
+    [[self videoPublisher] start];
     _mainLoop = g_main_loop_new (mainContext, FALSE);
     g_main_loop_run (_mainLoop);
     live_status(false);
+    [[self videoPublisher] stop];
     
     
     gst_rtsp_server_client_filter (_server, client_filter, NULL);
@@ -241,7 +273,7 @@ BOOL isPortAvailable(int port) {
     }
 
     
-    BufferItem *item = [[BufferItem alloc] initWithSampleBuffer:sampleBuffer timestamp:nil duration:nil];
+    BufferItem *item = [[BufferItem alloc] initWithSampleBuffer:sampleBuffer];
     if(item != nil) {
         [self.globalContext->queue insert:item];
     }

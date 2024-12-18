@@ -1,0 +1,99 @@
+# Xcode
+.DS_Store
+build/
+DerivedData/
+*.xcworkspace
+!default.xcworkspace # If you use a shared xcworkspace file
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Swift Package Manager
+/.swiftpm
+/.build
+Package.resolved
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+*.ipa
+*.xcresult
+
+# Code Coverage
+*.xccovreport
+*.xccovarchive
+
+# Temporary files
+*.moved-aside
+*.xcuserstate
+*.xcuserdatad
+
+# macOS Files
+*.DS_Store
+*.swp
+*.lock
+*.bak
+*.tmp
+
+# Logs
+*.log
+*.crash
+
+# Keychain
+*.keychain
+
+# Certificates and Profiles
+*.cer
+*.p12
+*.mobileprovision
+*.provisionprofile
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+test-output/
+*.gcda
+*.gcno
+*.gcov
+*.turd
+
+# Ruby
+Gemfile.lock
+
+# Other Files
+*.orig
+*.bak
+*.mode1v3
+*.pbxuser
+
+# Custom Rules
+*.orig
+*.lock
+
+# Ignore Archives
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+*.dmg
+
+# Ignore compiled libraries
+*.a
+*.o
+*.so
+*.dylib
+
+# SwiftPM Resources
+.swiftpm/
+Package.pins
+

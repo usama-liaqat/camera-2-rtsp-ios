@@ -21,18 +21,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) int width;
 @property (nonatomic) int height;
 
-@property (nonatomic) GstClockTime timestamp;
-@property (nonatomic) GstClockTime duration;
-
-@property (nonatomic) CMTime pts;
-@property (nonatomic) CMTime dts;
-
 @property (nonatomic) FourCharCode mediaType;
 @property (nonatomic) NSString *type;
 @property (nonatomic) int index;
 
 
-- (instancetype) initWithSampleBuffer:(CMSampleBufferRef)sampleBuffer timestamp:(GstClockTime)timestamp duration:(GstClockTime)duration;
+- (instancetype) initWithSampleBuffer:(CMSampleBufferRef)sampleBuffer;
 - (void)dealloc;
 
 @end

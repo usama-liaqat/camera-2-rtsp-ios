@@ -9,7 +9,7 @@
 
 @implementation BufferItem
 
-- (instancetype)initWithSampleBuffer:(CMSampleBufferRef)sampleBuffer timestamp:(GstClockTime)timestamp duration:(GstClockTime)duration {
+- (instancetype)initWithSampleBuffer:(CMSampleBufferRef)sampleBuffer{
     self = [super init];
     if (self) {
         if (!sampleBuffer) {
@@ -32,10 +32,6 @@
         self.width = (int)dimensions.width;
         self.height = (int)dimensions.height;
         
-        // Extract PTS and DTS
-        self.pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
-        self.dts = CMSampleBufferGetDecodeTimeStamp(sampleBuffer);
-        
         // Extract media type
         self.mediaType = CMFormatDescriptionGetMediaSubType(formatDesc);
         
@@ -45,8 +41,6 @@
                      (self.mediaType >> 16) & 0xFF,
                      (self.mediaType >> 8) & 0xFF,
                      self.mediaType & 0xFF];
-        self.timestamp = timestamp;
-        self.duration = duration;
     }
     return self;
 }
