@@ -20,7 +20,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     var captureSession: AVCaptureSession?
     var videoPreviewLayer: AVCaptureVideoPreviewLayer?
-    var currentCameraPosition: AVCaptureDevice.Position = .back
+    var currentCameraPosition: AVCaptureDevice.Position = .front
 
     override func viewDidLoad() {
         super.viewDidLoad()

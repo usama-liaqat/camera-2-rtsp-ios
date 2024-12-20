@@ -189,8 +189,8 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
         self.ctx->timestamp = 0;
         self.ctx->queue = [[BufferQueue alloc] init];
         self.ctx->inputClock = CMClockGetHostTimeClock();
-
     }
+    
     return self;
 }
 
