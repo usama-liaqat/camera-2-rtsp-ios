@@ -68,6 +68,85 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PipelineConte
 {
     if(!ctx) return GST_FLOW_ERROR;
     
+    BufferItem *buffer = [ctx->primary->queue pop];
+    NSLog(@"NEED_DATA  ---  buffer -> %@", buffer);
+
+    if (buffer != nil) {
+        CMSampleBufferRef sampleBuffer = buffer.sampleBuffer;
+        int width =  buffer.width;
+        int height = buffer.height;
+        NSString *type = buffer.type;
+        
+        const char *format = [type UTF8String];
+
+        // Log the values from the dictionary
+//        NSLog(@"SampleBuffer: %@", sampleBuffer);
+        NSDictionary *logDict = @{
+            @"Width" : @(width),
+            @"Height" : @(height),
+            @"Type" : type,
+            @"Timestamp" : @(ctx->primary->timestamp),
+        };
+
+        NSLog(@"NEED_DATA  ---  %@", logDict);
+        
+        if (width != ctx->primary->width || height != ctx->primary->height) {
+            ctx->primary->width = width;
+            ctx->primary->height = height;
+            NSLog(@"NEED_DATA  ---  Different Height.");
+            GstCaps *caps = gst_caps_new_simple("video/x-raw",
+                                                "format", G_TYPE_STRING, format,
+                                                "width", G_TYPE_INT, (guint)width,
+                                                "height", G_TYPE_INT, (guint)height,
+                                                "framerate", GST_TYPE_FRACTION, 30, 1,
+                                                NULL);
+            gst_app_src_set_caps(GST_APP_SRC(appsrc), caps);
+            gst_caps_unref(caps);
+        }
+        CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+        if (!imageBuffer) {
+            NSLog(@"NEED_DATA  ---  Error: imageBuffer is NULL.");
+            return GST_FLOW_ERROR;
+        }
+        CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+        size_t bufferSize = CVPixelBufferGetDataSize(imageBuffer);
+        if (bufferSize == 0) {
+            g_printerr("NEED_DATA  ---  Error: Data size is zero, invalid buffer\n");
+            return GST_FLOW_ERROR;
+        }
+        void *baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
+        GstBuffer *gstBuffer = gst_buffer_new_allocate(NULL, bufferSize, NULL);
+
+        GstMapInfo map;
+        if (gst_buffer_map(gstBuffer, &map, GST_MAP_WRITE)) {
+            memcpy(map.data, baseAddress, bufferSize);
+            gst_buffer_unmap(gstBuffer, &map);
+        } else {
+            NSLog(@"NEED_DATA  ---  Failed to map GstBuffer.");
+            CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+            gst_buffer_unref(gstBuffer); // Ensure buffer is unreferenced on failure
+            return GST_FLOW_ERROR;
+        }
+        
+        GST_BUFFER_PTS (gstBuffer) = ctx->primary->timestamp;
+        GST_BUFFER_DURATION (gstBuffer) = gst_util_uint64_scale_int (1, GST_SECOND, 30);
+        ctx->primary->timestamp += GST_BUFFER_DURATION (gstBuffer);
+        
+        GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), gstBuffer);
+        NSLog(@"NEED_DATA  ---  pushing buffer to appsrc: %s", gst_flow_get_name(ret));
+        CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+        return ret;
+    } else {
+        NSLog(@"NEED_DATA  ---  No data in buffer queue.");
+    }
+    
+    NSLog(@"NEED_DATA  ---  GST_FLOW_ERROR Last");
+
+
+
+    
+    return GST_FLOW_ERROR;
+    
     return GST_FLOW_OK;
 }
 
@@ -218,6 +297,7 @@ static PipelineContext * ctx_create () {
     ctx->primary->appsink = NULL;
     ctx->primary->width = 0;
     ctx->primary->height = 0;
+    ctx->primary->timestamp = 0;
 
     ctx->rtsp = (RTSPPipeline *)malloc(sizeof(RTSPPipeline));
     if (!ctx->rtsp) {
@@ -319,14 +399,27 @@ static void ctx_free (PipelineContext * ctx)
 }
 
 - (void)startHLS {
+    if(!self.ctx) {
+        return;
+    }
+    HLSPipeline *hlsCtx = self.ctx->hls;
     
 }
 
 - (void)startRTSP:(NSString*)rtsp {
+    if(!self.ctx) {
+        return;
+    }
     gchar *url = (gchar *)[rtsp UTF8String];
+    RTSPPipeline *rtspCtx = self.ctx->rtsp;
 }
 
 - (void)startPrimary {
+    if(!self.ctx) {
+        return;
+    }
+    PrimaryPipeline *primaryCtx = self.ctx->primary;
+
     
 }
 
@@ -415,10 +508,28 @@ static void ctx_free (PipelineContext * ctx)
 
 
 - (void)stop {
+    [self.lock lock];
+    if(self.isRunning && self.ctx->mainLoop != NULL){
+        g_main_loop_quit(self.ctx->mainLoop);
+    }
+    [self.lock unlock];
 }
 
 - (void)addBuffer:(CMSampleBufferRef)sampleBuffer {
+    if (!self.ctx) {
+        NSLog(@"Context is Not Defined");
+        return;
+    }
+    if (!sampleBuffer) {
+        NSLog(@"Received nil sampleBuffer.");
+        return;
+    }
+
     
+    BufferItem *item = [[BufferItem alloc] initWithSampleBuffer:sampleBuffer];
+    if(item != nil) {
+        [self.ctx->primary->queue insert:item];
+    }
 }
 
 @end

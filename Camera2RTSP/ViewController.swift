@@ -9,7 +9,7 @@ import UIKit
 import AVFoundation
 
 class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
-    private let cameraPublisher: CameraPublisher = CameraPublisher()
+    private let cameraPublisher: Pipeline = Pipeline()
     private var publishStatus: Bool = false
 
     @IBOutlet weak var cameraView: UIView!

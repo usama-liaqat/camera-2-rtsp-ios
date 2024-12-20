@@ -4,6 +4,7 @@
 
 #import "Library/gst_ios_init.h"
 #import "Library/Types.h"
-#import "Library/CameraPublisher.h"
-#import "Library/CameraPublish.h"
-#import "Library/VideoServer.h"
+#import "Library/Pipeline.h"
+//#import "Library/CameraPublisher.h"
+//#import "Library/CameraPublish.h"
+//#import "Library/VideoServer.h"

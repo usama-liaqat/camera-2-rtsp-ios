@@ -26,7 +26,8 @@ typedef struct {
     guint bus_watch_id;
     int width;
     int height;
-    BufferQueue * _Nonnull queue; // Add mutable array
+    GstClockTime timestamp;
+    BufferQueue * _Nonnull queue;
 } PrimaryPipeline;
 
 typedef struct {
