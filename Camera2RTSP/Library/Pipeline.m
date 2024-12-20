@@ -414,28 +414,12 @@ static void ctx_free (PipelineContext * ctx)
     RTSPPipeline *rtspCtx = self.ctx->rtsp;
 }
 
-- (void)startPrimary {
+- (BOOL)startPrimary:(NSString*)rtsp {
     if(!self.ctx) {
-        return;
+        return NO;
     }
-    PrimaryPipeline *primaryCtx = self.ctx->primary;
-
-    
-}
-
-- (void)start:(NSString*)rtsp withCallback:(StatusCallback)live_status {
-    [self.lock lock];
-    if (self.isRunning) {
-        NSLog(@"Pipeline is already running. Aborting start.");
-        live_status(true);
-        [self.lock unlock];
-        return;
-    }
-    self.ctx = ctx_create();
-    
     gchar *url = (gchar *)[rtsp UTF8String];
-    
-    self.ctx->mainLoop = g_main_loop_new(NULL, FALSE);
+    PrimaryPipeline *primaryCtx = self.ctx->primary;
     
     gchar *pipeline_description = g_strdup_printf("appsrc name=source ! "
                                                   "queue ! videoflip method=clockwise ! "
@@ -451,16 +435,12 @@ static void ctx_free (PipelineContext * ctx)
     GstElement *pipeline = gst_parse_launch(pipeline_description, &error);
     if (!pipeline) {
         NSLog(@"Failed to create GStreamer pipeline: %s", error->message);
-        g_clear_error(&error);
-        live_status(false);
-        ctx_free(self.ctx);
-        [self.lock unlock];
-        return;
+        return NO;
     }
     
     GstElement *appsrcElement = gst_bin_get_by_name_recurse_up(GST_BIN (pipeline), "source");
     if (appsrcElement) {
-        self.ctx->primary->appsrc = appsrcElement;
+        primaryCtx->appsrc = appsrcElement;
         g_object_set(appsrcElement,
              "format", GST_FORMAT_TIME,
              "do-timestamp", (gboolean)true,
@@ -474,7 +454,7 @@ static void ctx_free (PipelineContext * ctx)
 
     // Add a bus to the pipeline
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
-    guint bus_watch_id =gst_bus_add_watch(bus, primary_bus_call, self.ctx);
+    primaryCtx->bus_watch_id =gst_bus_add_watch(bus, primary_bus_call, self.ctx);
     gst_object_unref(bus);
 
     // Set the pipeline to playing state
@@ -483,24 +463,50 @@ static void ctx_free (PipelineContext * ctx)
 
     if (ret == GST_STATE_CHANGE_FAILURE) {
         NSLog(@"Failed to set the pipeline to PLAYING state.");
-        gst_object_unref(self.ctx->primary->pipeline);
-        live_status(false);
-        ctx_free(self.ctx);
-        [self.lock unlock];
-        return;
+        return NO;
     }
     
 
 
 
-    self.ctx->primary->pipeline = pipeline;
+    primaryCtx->pipeline = pipeline;
+    
+    return YES;
+
+    
+}
+
+- (void)start:(NSString*)rtsp withCallback:(StatusCallback)live_status {
+    [self.lock lock];
+    if (self.isRunning) {
+        NSLog(@"Pipeline is already running. Aborting start.");
+        live_status(true);
+        [self.lock unlock];
+        return;
+    }
+    self.ctx = ctx_create();
+    
+    
+    self.ctx->mainLoop = g_main_loop_new(NULL, FALSE);
+    
+    BOOL primaryStatus = [self startPrimary:rtsp];
+    if(!primaryStatus) {
+        live_status(false);
+        _isRunning = NO;
+        ctx_free(self.ctx);
+        self.ctx = nil;
+        return;
+    }
+    
     live_status(true);
     _isRunning = YES;
     [self.lock unlock];
     g_main_loop_run(self.ctx->mainLoop);
     live_status(false);
     _isRunning = NO;
-    g_source_remove (bus_watch_id);
+    if(self.ctx->primary->bus_watch_id) {
+        g_source_remove (self.ctx->primary->bus_watch_id);
+    }
 
     ctx_free(self.ctx);
     self.ctx = nil;
