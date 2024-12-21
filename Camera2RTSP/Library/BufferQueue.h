@@ -10,11 +10,7 @@
 #import <Foundation/Foundation.h>
 
 #import "BufferItem.h"
-
-typedef enum _QueueState {
-  NO_BUFFERS = 1,
-  HAS_BUFFER_OR_STOP_REQUEST,
-} QueueState;
+#import "Types.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

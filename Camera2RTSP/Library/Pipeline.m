@@ -11,7 +11,7 @@
 
 static gboolean primary_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
 {
-//    PipelineContext *ctx = (PipelineContext *)data;
+    PipelineContext *ctx = (PipelineContext *)data;
     const gchar *message_type_name = gst_message_type_get_name(GST_MESSAGE_TYPE(msg));
     NSLog(@"BUS -- PRIMARY -- Message received: %s", message_type_name);
     switch (GST_MESSAGE_TYPE(msg)) {
@@ -52,6 +52,7 @@ static gboolean primary_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
         case GST_MESSAGE_STATE_CHANGED: {
             GstState old_state, new_state, pending_state;
             gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
+            ctx->primary->state = new_state;
             NSLog(@"BUS -- PRIMARY -- Pipeline state changed from %s to %s.",
                   gst_element_state_get_name(old_state),
                   gst_element_state_get_name(new_state));
@@ -69,7 +70,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PipelineConte
     if(!ctx) return GST_FLOW_ERROR;
     
     BufferItem *buffer = [ctx->primary->queue pop];
-    NSLog(@"NEED_DATA  ---  buffer -> %@", buffer);
+//    NSLog(@"NEED_DATA  ---  buffer -> %@", buffer);
 
     if (buffer != nil) {
         CMSampleBufferRef sampleBuffer = buffer.sampleBuffer;
@@ -88,12 +89,12 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PipelineConte
             @"Timestamp" : @(ctx->primary->timestamp),
         };
 
-        NSLog(@"NEED_DATA  ---  %@", logDict);
+//        NSLog(@"NEED_DATA  ---  %@", logDict);
         
         if (width != ctx->primary->width || height != ctx->primary->height) {
             ctx->primary->width = width;
             ctx->primary->height = height;
-            NSLog(@"NEED_DATA  ---  Different Height.");
+//            NSLog(@"NEED_DATA  ---  Different Height.");
             GstCaps *caps = gst_caps_new_simple("video/x-raw",
                                                 "format", G_TYPE_STRING, format,
                                                 "width", G_TYPE_INT, (guint)width,
@@ -105,13 +106,13 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PipelineConte
         }
         CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
         if (!imageBuffer) {
-            NSLog(@"NEED_DATA  ---  Error: imageBuffer is NULL.");
+//            NSLog(@"NEED_DATA  ---  Error: imageBuffer is NULL.");
             return GST_FLOW_ERROR;
         }
         CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
         size_t bufferSize = CVPixelBufferGetDataSize(imageBuffer);
         if (bufferSize == 0) {
-            g_printerr("NEED_DATA  ---  Error: Data size is zero, invalid buffer\n");
+//            g_printerr("NEED_DATA  ---  Error: Data size is zero, invalid buffer\n");
             return GST_FLOW_ERROR;
         }
         void *baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
@@ -122,7 +123,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PipelineConte
             memcpy(map.data, baseAddress, bufferSize);
             gst_buffer_unmap(gstBuffer, &map);
         } else {
-            NSLog(@"NEED_DATA  ---  Failed to map GstBuffer.");
+//            NSLog(@"NEED_DATA  ---  Failed to map GstBuffer.");
             CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
             gst_buffer_unref(gstBuffer); // Ensure buffer is unreferenced on failure
             return GST_FLOW_ERROR;
@@ -137,10 +138,10 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PipelineConte
         CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
         return ret;
     } else {
-        NSLog(@"NEED_DATA  ---  No data in buffer queue.");
+//        NSLog(@"NEED_DATA  ---  No data in buffer queue.");
     }
     
-    NSLog(@"NEED_DATA  ---  GST_FLOW_ERROR Last");
+//    NSLog(@"NEED_DATA  ---  GST_FLOW_ERROR Last");
 
 
 
@@ -150,13 +151,69 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PipelineConte
     return GST_FLOW_OK;
 }
 
+
+static GstFlowReturn dispatch_buffer (GstBuffer *buffer, GstElement *appsrc) {
+    GstFlowReturn ret;
+    g_signal_emit_by_name (appsrc, "push-buffer", buffer, &ret);
+    NSLog(@"NEW_SAMPLE  --- BUFFER pushing buffer to appsrc: %s", gst_flow_get_name(ret));
+
+    return ret;
+}
+
+static GstFlowReturn dispatch_appsink_sample (GstSample *sample, PipelineContext *ctx) {
+    GstBuffer *buffer = gst_sample_get_buffer (sample);
+//    GstSegment *seg = gst_sample_get_segment (sample);
+//    GstClockTime pts, dts, timestamp, duration;
+    
+    if (buffer) {
+//        pts = GST_BUFFER_PTS (buffer);
+//        if (GST_CLOCK_TIME_IS_VALID (pts))
+//            pts = gst_segment_to_running_time (seg, GST_FORMAT_TIME, pts);
+//        
+//        dts = GST_BUFFER_DTS (buffer);
+//        if (GST_CLOCK_TIME_IS_VALID (dts))
+//            dts = gst_segment_to_running_time (seg, GST_FORMAT_TIME, dts);
+//        
+//        timestamp = GST_BUFFER_TIMESTAMP (buffer);
+//        if (GST_CLOCK_TIME_IS_VALID (timestamp))
+//            timestamp = gst_segment_to_running_time (seg, GST_FORMAT_TIME, timestamp);
+//        
+//        duration = GST_BUFFER_DURATION(buffer);
+//        
+//        NSDictionary *logDict = @{
+//            @"pts" : @(pts),
+//            @"dts" : @(dts),
+//            @"timestamp" : @(timestamp),
+//            @"duration" : @(duration),
+//        };
+//
+//        NSLog(@"NEW_SAMPLE  ---  %@", logDict);
+//        
+//        GST_BUFFER_PTS (buffer) = pts;
+//        GST_BUFFER_DTS (buffer) = dts;
+//        GST_BUFFER_TIMESTAMP (buffer) = timestamp;
+//        GST_BUFFER_DURATION (buffer) = duration;
+        
+        if(ctx->rtsp->state == GST_STATE_PLAYING && ctx->rtsp->appsrc){
+            dispatch_buffer(buffer, ctx->rtsp->appsrc);
+        }
+    }
+    /* we don't need the appsink sample anymore */
+//    gst_buffer_unref(buffer);
+    
+    return GST_FLOW_OK;
+}
+
 static GstFlowReturn new_sample (GstElement *sink, PipelineContext *ctx) {
-    NSLog(@"NEW SAMPLE -- CALLBACK");
+    NSLog(@"NEW_SAMPLE -- CALLBACK");
     if(!ctx) return GST_FLOW_EOS;
     GstSample *sample;
     sample = gst_app_sink_pull_sample (GST_APP_SINK (ctx->primary->appsink));
     if (sample) {
-        NSLog(@"NEW SAMPLE -- RECEIVED");
+        NSLog(@"NEW_SAMPLE -- RECEIVED");
+        GstFlowReturn status = dispatch_appsink_sample(sample, ctx);
+        gst_sample_unref (sample);
+        return status;;
     }
     return GST_FLOW_OK;
 }
@@ -168,7 +225,7 @@ static GstFlowReturn new_sample (GstElement *sink, PipelineContext *ctx) {
 
 static gboolean hls_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
 {
-    //    PipelineContext *ctx = (PipelineContext *)data;
+    PipelineContext *ctx = (PipelineContext *)data;
     const gchar *message_type_name = gst_message_type_get_name(GST_MESSAGE_TYPE(msg));
     NSLog(@"BUS -- HLS -- Message received: %s", message_type_name);
     switch (GST_MESSAGE_TYPE(msg)) {
@@ -209,6 +266,7 @@ static gboolean hls_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
         case GST_MESSAGE_STATE_CHANGED: {
             GstState old_state, new_state, pending_state;
             gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
+            ctx->hls->state = new_state;
             NSLog(@"BUS -- HLS -- Pipeline state changed from %s to %s.",
                   gst_element_state_get_name(old_state),
                   gst_element_state_get_name(new_state));
@@ -228,7 +286,7 @@ static gboolean hls_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
 
 static gboolean rtsp_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
 {
-    //    PipelineContext *ctx = (PipelineContext *)data;
+    PipelineContext *ctx = (PipelineContext *)data;
     const gchar *message_type_name = gst_message_type_get_name(GST_MESSAGE_TYPE(msg));
     NSLog(@"BUS -- RTSP -- Message received: %s", message_type_name);
     switch (GST_MESSAGE_TYPE(msg)) {
@@ -269,6 +327,7 @@ static gboolean rtsp_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
         case GST_MESSAGE_STATE_CHANGED: {
             GstState old_state, new_state, pending_state;
             gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
+            ctx->rtsp->state = new_state;
             NSLog(@"BUS -- RTSP -- Pipeline state changed from %s to %s.",
                   gst_element_state_get_name(old_state),
                   gst_element_state_get_name(new_state));
@@ -281,7 +340,7 @@ static gboolean rtsp_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
 }
 
 
-static PipelineContext * ctx_create () {
+static PipelineContext * ctx_create (void) {
     PipelineContext *ctx = (PipelineContext *)malloc(sizeof(PipelineContext));
     if (!ctx) return NULL; // Handle memory allocation failure
     
@@ -292,6 +351,7 @@ static PipelineContext * ctx_create () {
     }
     
     ctx->primary->queue = [[BufferQueue alloc] init];
+    ctx->primary->state = GST_STATE_NULL;
     ctx->primary->pipeline = NULL;
     ctx->primary->appsrc = NULL;
     ctx->primary->appsink = NULL;
@@ -305,6 +365,7 @@ static PipelineContext * ctx_create () {
         free(ctx);
         return NULL; // Handle memory allocation failure
     }
+    ctx->rtsp->state = GST_STATE_NULL;
     ctx->rtsp->pipeline = NULL;
     ctx->rtsp->appsrc = NULL;
 
@@ -316,6 +377,7 @@ static PipelineContext * ctx_create () {
         free(ctx);
         return NULL; // Handle memory allocation failure
     }
+    ctx->hls->state = GST_STATE_NULL;
     ctx->hls->pipeline = NULL;
     ctx->hls->appsrc = NULL;
 
@@ -391,6 +453,8 @@ static void ctx_free (PipelineContext * ctx)
         self.lock = [[NSLock alloc] init];
         gst_init(nil, nil);
         gst_debug_set_default_threshold(GST_LEVEL_FIXME);
+//        gst_debug_set_threshold_for_name("rtspclientsink", GST_LEVEL_DEBUG);
+//        gst_debug_set_threshold_for_name("appsrc", GST_LEVEL_DEBUG);
         self.isRunning = NO;
         self.ctx = nil;
 
@@ -406,30 +470,74 @@ static void ctx_free (PipelineContext * ctx)
     
 }
 
-- (void)startRTSP:(NSString*)rtsp {
-    if(!self.ctx) {
-        return;
-    }
-    gchar *url = (gchar *)[rtsp UTF8String];
-    RTSPPipeline *rtspCtx = self.ctx->rtsp;
-}
-
-- (BOOL)startPrimary:(NSString*)rtsp {
+- (BOOL)startRTSP:(NSString*)rtsp {
     if(!self.ctx) {
         return NO;
     }
     gchar *url = (gchar *)[rtsp UTF8String];
+    RTSPPipeline *rtspCtx = self.ctx->rtsp;
+    gchar *pipeline_description = g_strdup_printf("appsrc name=media-source ! "
+                                                  "h264parse config-interval=-1 ! "
+                                                  "rtspclientsink location=%s latency=1 debug=true", url);
+    g_print("pipeline -> rtsp -> %s\n", pipeline_description);
+    
+    GError *error = NULL;
+    GstElement *pipeline = gst_parse_launch(pipeline_description, &error);
+    if (!pipeline) {
+        NSLog(@"Failed to create GStreamer pipeline: %s", error->message);
+        return NO;
+    }
+    
+    GstElement *appsrc = gst_bin_get_by_name_recurse_up(GST_BIN (pipeline), "media-source");
+    if (appsrc) {
+        rtspCtx->appsrc = appsrc;
+        GstCaps *caps = gst_caps_new_simple ("video/x-h264",
+                                    "stream-format", G_TYPE_STRING, "byte-stream",
+                                    "alignment", G_TYPE_STRING, "nal",
+                                    NULL);
+        g_object_set(appsrc,
+             "caps", caps,
+             "format", GST_FORMAT_TIME,
+             "is-live", (gboolean)true,
+             NULL
+         );
+        gst_caps_unref (caps);
+    } else {
+        NSLog(@"Failed to retrieve the appsrc element.");
+    }
+    
+    // Add a bus to the pipeline
+    GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
+    rtspCtx->bus_watch_id =gst_bus_add_watch(bus, rtsp_bus_call, self.ctx);
+    gst_object_unref(bus);
+    
+    GstStateChangeReturn ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
+    NSLog(@"set the pipeline to PLAYING state. %d", ret);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        NSLog(@"Failed to set the pipeline to PLAYING state.");
+        return NO;
+    }
+
+    rtspCtx->pipeline = pipeline;
+    
+    return YES;
+}
+
+- (BOOL)startPrimary {
+    if(!self.ctx) {
+        return NO;
+    }
     PrimaryPipeline *primaryCtx = self.ctx->primary;
     
-    gchar *pipeline_description = g_strdup_printf("appsrc name=source ! "
+    gchar *pipeline_description = g_strdup_printf("appsrc name=video-source ! "
                                                   "queue ! videoflip method=clockwise ! "
                                                   "videorate skip-to-first=true ! video/x-raw,framerate=30/1 ! "
                                                   "videoscale ! video/x-raw,width=1080,height=1920 ! "
                                                   "queue ! videoconvert ! video/x-raw,format=I420 ! "
                                                   "vtenc_h264 bitrate=5000 allow-frame-reordering=false realtime=true ! "
                                                   "queue ! h264parse config-interval=-1 ! "
-                                                  "rtspclientsink location=%s latency=1 debug=true", url);
-    g_print("%s\n", pipeline_description);
+                                                  "appsink name=video-sink");
+    g_print("pipeline -> primary -> %s\n", pipeline_description);
 
     GError *error = NULL;
     GstElement *pipeline = gst_parse_launch(pipeline_description, &error);
@@ -438,18 +546,39 @@ static void ctx_free (PipelineContext * ctx)
         return NO;
     }
     
-    GstElement *appsrcElement = gst_bin_get_by_name_recurse_up(GST_BIN (pipeline), "source");
-    if (appsrcElement) {
-        primaryCtx->appsrc = appsrcElement;
-        g_object_set(appsrcElement,
+    GstElement *appsrc = gst_bin_get_by_name_recurse_up(GST_BIN (pipeline), "video-source");
+    if (appsrc) {
+        primaryCtx->appsrc = appsrc;
+        g_object_set(appsrc,
              "format", GST_FORMAT_TIME,
              "do-timestamp", (gboolean)true,
              "is-live", (gboolean)true,
              NULL
          );
-        g_signal_connect (appsrcElement, "need-data", (GCallback) need_data, self.ctx);
+        g_signal_connect (appsrc, "need-data", (GCallback) need_data, self.ctx);
     } else {
         NSLog(@"Failed to retrieve the appsrc element.");
+    }
+    
+    GstElement *appsink = gst_bin_get_by_name_recurse_up(GST_BIN (pipeline), "video-sink");
+    if (appsink) {
+        primaryCtx->appsink = appsink;
+        GstCaps *caps = gst_caps_new_simple ("video/x-h264",
+                                    "stream-format", G_TYPE_STRING, "byte-stream",
+                                    "alignment", G_TYPE_STRING, "nal",
+                                    NULL);
+        g_object_set (appsink,
+//                      "sync", FALSE,
+                      "caps",caps,
+                      "drop", TRUE,
+                      "emit-signals", TRUE,
+                      "max-buffers", 100,
+                      NULL);
+        g_signal_connect (appsink, "new-sample", G_CALLBACK (new_sample), self.ctx);
+        gst_caps_unref (caps);
+
+    } else {
+        NSLog(@"Failed to retrieve the appsink element.");
     }
 
     // Add a bus to the pipeline
@@ -489,7 +618,7 @@ static void ctx_free (PipelineContext * ctx)
     
     self.ctx->mainLoop = g_main_loop_new(NULL, FALSE);
     
-    BOOL primaryStatus = [self startPrimary:rtsp];
+    BOOL primaryStatus = [self startPrimary];
     if(!primaryStatus) {
         live_status(false);
         _isRunning = NO;
@@ -497,6 +626,16 @@ static void ctx_free (PipelineContext * ctx)
         self.ctx = nil;
         return;
     }
+    
+    BOOL rtspStatus = [self startRTSP:rtsp];
+    if(!rtspStatus) {
+        live_status(false);
+        _isRunning = NO;
+        ctx_free(self.ctx);
+        self.ctx = nil;
+        return;
+    }
+
     
     live_status(true);
     _isRunning = YES;

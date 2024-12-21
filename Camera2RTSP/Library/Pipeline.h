@@ -23,6 +23,7 @@ typedef struct {
     GstElement * _Nonnull pipeline;
     GstElement * _Nonnull appsrc;
     GstElement * _Nonnull appsink;
+    GstState state;
     guint bus_watch_id;
     int width;
     int height;
@@ -33,12 +34,14 @@ typedef struct {
 typedef struct {
     GstElement * _Nonnull pipeline;
     GstElement * _Nonnull appsrc;
+    GstState state;
     guint bus_watch_id;
 } HLSPipeline;
 
 typedef struct {
     GstElement * _Nonnull pipeline;
     GstElement * _Nonnull appsrc;
+    GstState state;
     guint bus_watch_id;
 } RTSPPipeline;
 
@@ -53,13 +56,14 @@ static gboolean primary_bus_call(GstBus * _Nonnull bus, GstMessage * _Nonnull ms
 static gboolean hls_bus_call(GstBus * _Nonnull bus, GstMessage * _Nonnull msg, gpointer _Nonnull data);
 static gboolean rtsp_bus_call(GstBus * _Nonnull bus, GstMessage * _Nonnull msg, gpointer _Nonnull data);
 
-
-static GstFlowReturn new_sample (GstElement *sink, PipelineContext *ctx);
+static GstFlowReturn dispatch_buffer (GstBuffer * _Nonnull buffer, GstElement * _Nonnull appsrc);
+static GstFlowReturn dispatch_appsink_sample (GstSample * _Nonnull sample, PipelineContext * _Nonnull ctx);
+static GstFlowReturn new_sample (GstElement * _Nonnull sink, PipelineContext * _Nonnull ctx);
 static GstFlowReturn need_data(GstElement * _Nonnull appsrc, guint unused, PipelineContext * _Nonnull ctx);
 
 
-static PipelineContext * ctx_create ();
-static void ctx_free (PipelineContext * ctx);
+static PipelineContext * _Nullable ctx_create (void);
+static void ctx_free (PipelineContext * _Nonnull ctx);
 
 NS_ASSUME_NONNULL_BEGIN
 

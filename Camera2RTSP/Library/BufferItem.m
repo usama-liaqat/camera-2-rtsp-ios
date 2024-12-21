@@ -50,7 +50,7 @@
     if (self.sampleBuffer) {
         CFRelease(self.sampleBuffer);
     }
-    NSLog(@"BufferItem deallocated and cleared.");
+//    NSLog(@"BufferItem deallocated and cleared.");
 
 }
 

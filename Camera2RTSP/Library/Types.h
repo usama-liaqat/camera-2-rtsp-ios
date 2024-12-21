@@ -9,6 +9,13 @@
 #ifndef Types_h
 #define Types_h
 
+
+
+typedef enum _QueueState {
+  NO_BUFFERS = 1,
+  HAS_BUFFER_OR_STOP_REQUEST,
+} QueueState;
+
 typedef NS_ENUM(NSInteger, StatusCode) {
     portAvailable = 0,
     serverStarted = 1,
