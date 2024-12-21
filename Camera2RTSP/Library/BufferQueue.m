@@ -23,7 +23,7 @@
     return self;
 }
 
-- (void)insert:(BufferItem*)buffer {
+- (void)enqueue:(BufferItem*)buffer {
     [self.lock lock];
     buffer.index = self.index++;
     if ([self.queue count] == BUFFER_QUEUE_SIZE){
@@ -35,7 +35,7 @@
     [self.lock unlockWithCondition:HAS_BUFFER_OR_STOP_REQUEST];
 }
 
-- (BufferItem *)pop {
+- (BufferItem *)dequeue {
     [self.lock lockWhenCondition:HAS_BUFFER_OR_STOP_REQUEST]; // Wait for data to be available
     BufferItem *buffer = nil;
     if (self.queue.count > 0) {

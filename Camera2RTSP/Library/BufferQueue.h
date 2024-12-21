@@ -20,8 +20,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) int index;
 
 
-- (void)insert:(BufferItem*)buffer;
-- (BufferItem *)pop;
+- (void)enqueue:(BufferItem*)buffer;
+- (BufferItem *)dequeue;
 - (void)dealloc;
 
 @end

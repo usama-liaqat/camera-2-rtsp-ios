@@ -79,7 +79,7 @@ NSString *gstClockTimeToString(GstClockTime time) {
 static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherContext *ctx)
 {
     
-    BufferItem *buffer = [ctx->queue pop];
+    BufferItem *buffer = [ctx->queue dequeue];
     NSLog(@"NEED_DATA  ---  buffer -> %@", buffer);
 
     if (buffer != nil) {
@@ -317,7 +317,7 @@ static GstFlowReturn need_data (GstElement * appsrc, guint unused, PublisherCont
     
     BufferItem *item = [[BufferItem alloc] initWithSampleBuffer:sampleBuffer];
     if(item != nil) {
-        [self.ctx->queue insert:item];
+        [self.ctx->queue enqueue:item];
         GstState state, pending;
         GstStateChangeReturn ret;
         ret = gst_element_get_state(self.ctx->pipeline, &state, &pending, GST_SECOND);

@@ -15,7 +15,10 @@
 #include <gst/rtsp/rtsp.h>
 
 #include "Types.h"
-#import "BufferQueue.h"
+#import "BufferItem.h"
+#import "Queue.h"
+#import "GstBufferWrapper.h"
+
 
 
 
@@ -28,7 +31,7 @@ typedef struct {
     int width;
     int height;
     GstClockTime timestamp;
-    BufferQueue * _Nonnull queue;
+    Queue * _Nonnull queue;
 } PrimaryPipeline;
 
 typedef struct {
@@ -36,6 +39,9 @@ typedef struct {
     GstElement * _Nonnull appsrc;
     GstState state;
     guint bus_watch_id;
+    BOOL enable;
+    Queue * _Nonnull queue;
+    GstClockTime timestamp;
 } HLSPipeline;
 
 typedef struct {
@@ -43,6 +49,9 @@ typedef struct {
     GstElement * _Nonnull appsrc;
     GstState state;
     guint bus_watch_id;
+    BOOL enable;
+    Queue * _Nonnull queue;
+    GstClockTime timestamp;
 } RTSPPipeline;
 
 typedef struct {
@@ -59,7 +68,10 @@ static gboolean rtsp_bus_call(GstBus * _Nonnull bus, GstMessage * _Nonnull msg, 
 static GstFlowReturn dispatch_buffer (GstBuffer * _Nonnull buffer, GstElement * _Nonnull appsrc);
 static GstFlowReturn dispatch_appsink_sample (GstSample * _Nonnull sample, PipelineContext * _Nonnull ctx);
 static GstFlowReturn new_sample (GstElement * _Nonnull sink, PipelineContext * _Nonnull ctx);
-static GstFlowReturn need_data(GstElement * _Nonnull appsrc, guint unused, PipelineContext * _Nonnull ctx);
+
+static GstFlowReturn primary_need_data(GstElement * _Nonnull appsrc, guint unused, PipelineContext * _Nonnull ctx);
+static GstFlowReturn rtsp_need_data(GstElement * _Nonnull appsrc, guint unused, PipelineContext * _Nonnull ctx);
+static GstFlowReturn hls_need_data(GstElement * _Nonnull appsrc, guint unused, PipelineContext * _Nonnull ctx);
 
 
 static PipelineContext * _Nullable ctx_create (void);

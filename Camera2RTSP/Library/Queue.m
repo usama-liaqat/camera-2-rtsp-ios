@@ -17,11 +17,7 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        self.lock = [[NSConditionLock alloc] initWithCondition:NO_BUFFERS];
-        self.queue = [[NSMutableArray alloc] initWithCapacity:BUFFER_QUEUE_SIZE];
-        self.index = 0;
-        self.name = @"Queue";
-
+        [self initializeQueueWithName:@"Queue"];
     }
     return self;
 }
@@ -29,9 +25,16 @@
 - (instancetype)initWithName:(NSString *) name {
     self = [super init];
     if (self) {
-        self.name = name;
+        [self initializeQueueWithName:name];
     }
     return self;
+}
+
+- (void)initializeQueueWithName:(NSString *)name {
+    self.lock = [[NSConditionLock alloc] initWithCondition:NO_BUFFERS];
+    self.queue = [[NSMutableArray alloc] initWithCapacity:BUFFER_QUEUE_SIZE];
+    self.index = 0;
+    self.name = name;
 }
 
 - (void)enqueue:(id)buffer {
@@ -41,7 +44,7 @@
     }
 
     [self.queue insertObject:buffer atIndex:0];
-    NSLog(@"ENQUEUE --- %@ --- Queue Items -> %lu", self.name, (unsigned long)self.queue.count);
+//    NSLog(@"%@ --- ENQUEUE --- Queue Items -> %lu", self.name, (unsigned long)self.queue.count);
     [self.lock unlockWithCondition:HAS_BUFFER_OR_STOP_REQUEST];
 }
 
@@ -54,7 +57,7 @@
         [self.queue removeLastObject]; // Remove the first element
     }
     
-    NSLog(@"DEQUEUE --- %@ --- Queue Items -> %lu", self.name,(unsigned long)self.queue.count);
+//    NSLog(@"%@ --- DEQUEUE --- Queue Items -> %lu", self.name,(unsigned long)self.queue.count);
 
     [self.lock unlockWithCondition:(self.queue.count == 0 ? NO_BUFFERS : HAS_BUFFER_OR_STOP_REQUEST)];
     return buffer;
@@ -64,7 +67,7 @@
     [self.lock lock];
     [self.queue removeAllObjects]; // Empty the queue
     [self.lock unlock];
-    NSLog(@"DEALLOCATED --- %@ ---  deallocated and cleared.",self.name);
+    NSLog(@"%@ ---  DEALLOCATED --- deallocated and cleared.",self.name);
 }
 
 @end

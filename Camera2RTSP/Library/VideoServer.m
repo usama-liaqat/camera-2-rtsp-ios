@@ -10,7 +10,7 @@
 static GstFlowReturn server_need_data (GstElement * appsrc, guint unused, StreamContext *ctx) {
 
     
-    BufferItem *buffer = [ctx->globalCtx->queue pop];
+    BufferItem *buffer = [ctx->globalCtx->queue dequeue];
     NSLog(@"NEED_DATA  ---  buffer -> %@", buffer);
     
     if (buffer != nil) {
@@ -275,7 +275,7 @@ BOOL isPortAvailable(int port) {
     
     BufferItem *item = [[BufferItem alloc] initWithSampleBuffer:sampleBuffer];
     if(item != nil) {
-        [self.globalContext->queue insert:item];
+        [self.globalContext->queue enqueue:item];
     }
 }
 @end

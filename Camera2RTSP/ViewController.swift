@@ -135,8 +135,9 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     @IBAction func startPublishTapped(_ sender: UIButton) {
         DispatchQueue.global().async {
+            self.cameraPublisher.start("rtsp://10.1.1.6:8554/usama-liaqat", withCallback:self.publishStatupUpdate)
 //            self.cameraPublisher.start("rtsp://10.1.10.129/usama-liaqat", withCallback:self.publishStatupUpdate)
-            self.cameraPublisher.start("rtsp://sn-webrtc.snipback.com/usama-liaqat", withCallback:self.publishStatupUpdate)
+//            self.cameraPublisher.start("rtsp://sn-webrtc.snipback.com/usama-liaqat", withCallback:self.publishStatupUpdate)
         }
     }
     
